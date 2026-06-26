@@ -16,6 +16,9 @@ pub enum MathError {
     /// The provided tick lower bound is greater than or equal to the tick upper bound.
     InvalidTickRange,
 
+    /// sqrt price is zero
+    ZeroSqrtPrice,
+
     // --- Liquidity Math Errors ---
     /// Attempted to calculate amounts for a position with zero liquidity.
     ZeroLiquidity,
