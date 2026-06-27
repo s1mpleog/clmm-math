@@ -2,8 +2,8 @@ use ethnum::U256;
 
 use crate::error::MathError;
 
-/// Multiplies two u128 numbers in U256 space to avoid overflow
-/// casts it back to Q128.128 to Q64.64 and returns as u128
+/// Multiplies two u128 (Q64.64) numbers in U256 space to avoid overflow
+/// casts it back from Q128.128 to Q64.64 and returns as u128
 /// # Arguments
 /// `a`: u128
 /// `b`: u128
