@@ -31,7 +31,7 @@ impl LiquidityMath {
 
         // lower bound must not be greater than upper bound
         if sqrt_ratio_a_x64 > sqrt_ratio_b_x64 {
-            std::mem::swap(&mut sqrt_ratio_a_x64, &mut sqrt_ratio_b_x64);
+            core::mem::swap(&mut sqrt_ratio_a_x64, &mut sqrt_ratio_b_x64);
         }
 
         // calculates √Pa * √Pb into U256 space and scales it back to u128 but does not change
@@ -75,7 +75,7 @@ impl LiquidityMath {
 
         // sqrt_ratio_a_x64 should be smaller
         if sqrt_ratio_a_x64 > sqrt_ratio_b_x64 {
-            std::mem::swap(&mut sqrt_ratio_a_x64, &mut sqrt_ratio_b_x64);
+            core::mem::swap(&mut sqrt_ratio_a_x64, &mut sqrt_ratio_b_x64);
         }
 
         let delta = sqrt_ratio_b_x64
@@ -112,7 +112,7 @@ impl LiquidityMath {
         amount_1: u64,
     ) -> Result<u128, MathError> {
         if sqrt_ratio_a_x64 > sqrt_ratio_b_x64 {
-            std::mem::swap(&mut sqrt_ratio_a_x64, &mut sqrt_ratio_b_x64);
+            core::mem::swap(&mut sqrt_ratio_a_x64, &mut sqrt_ratio_b_x64);
         }
 
         if sqrt_ratio_x64 <= sqrt_ratio_a_x64 {
@@ -157,12 +157,8 @@ impl LiquidityMath {
             return Err(MathError::ZeroLiquidity);
         }
 
-        if sqrt_ratio_a_x64 == sqrt_ratio_b_x64 {
-            return Ok(0); // A zero-width range requires 0 tokens!
-        }
-
         if sqrt_ratio_a_x64 > sqrt_ratio_b_x64 {
-            std::mem::swap(&mut sqrt_ratio_a_x64, &mut sqrt_ratio_b_x64);
+            core::mem::swap(&mut sqrt_ratio_a_x64, &mut sqrt_ratio_b_x64);
         }
 
         // Q64.64 - Q64.64 = Q64.64
@@ -214,7 +210,7 @@ impl LiquidityMath {
         }
 
         if sqrt_ratio_a_x64 > sqrt_ratio_b_x64 {
-            std::mem::swap(&mut sqrt_ratio_a_x64, &mut sqrt_ratio_b_x64);
+            core::mem::swap(&mut sqrt_ratio_a_x64, &mut sqrt_ratio_b_x64);
         }
 
         let delta = sqrt_ratio_b_x64
@@ -262,7 +258,7 @@ impl LiquidityMath {
         }
 
         if sqrt_ratio_a_x64 > sqrt_ratio_b_x64 {
-            std::mem::swap(&mut sqrt_ratio_a_x64, &mut sqrt_ratio_b_x64);
+            core::mem::swap(&mut sqrt_ratio_a_x64, &mut sqrt_ratio_b_x64);
         }
 
         if sqrt_ratio_x64 < sqrt_ratio_a_x64 {
@@ -275,8 +271,8 @@ impl LiquidityMath {
                 amount_1: 0,
             })
         } else if sqrt_ratio_x64 <= sqrt_ratio_b_x64 {
-            // if we are here we know Pc > Pb
-            // and this branch checks Pc < Pb
+            // if we are here we know Pc > Pa
+            // and this branch checks Pa > Pb
             // Pa < Pc < Pa
 
             let amount_0 =
@@ -286,8 +282,7 @@ impl LiquidityMath {
 
             Ok(TokenAmounts { amount_0, amount_1 })
         } else {
-            // we know Pa > Pc and Pb < Pc
-            // so only token_1 is active
+            // only token_1 is active
             let amount_1 =
                 Self::get_amount_1_for_liquidity(sqrt_ratio_a_x64, sqrt_ratio_b_x64, liquidity)?;
 
