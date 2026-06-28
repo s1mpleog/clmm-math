@@ -25,7 +25,7 @@ impl SqrtPriceMath {
     ///
     /// # Return next_sqrt_price in Q64.64 format
 
-    // TODO: for some reason i am not fully stasifies with this implementation
+    // TODO: for some reason i am not fully stasified with this implementation
     // either use u512 which will significantly reduces complexity
     // or write helper functions to reduce the code complexity
     pub fn get_next_sqrt_price_from_amount0(
