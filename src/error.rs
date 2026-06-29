@@ -32,4 +32,5 @@ pub enum MathError {
     InsufficientLiquidity,
     /// The swap pushed the price to the exact limit set by the user (expected behavior, not a crash).
     PriceLimitReached,
+    InvalidFeeRate,
 }

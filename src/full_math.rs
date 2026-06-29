@@ -32,3 +32,19 @@ pub fn mul_div_floor(a: u128, b: u128, denom: u128) -> Result<u128, MathError> {
 
     Ok(result.as_u128())
 }
+
+#[inline(always)]
+pub fn mul_div_ceil(a: u128, b: u128, denom: u128) -> Option<u128> {
+    if denom == 0 {
+        return None;
+    }
+
+    let val = a.checked_mul(b)?;
+    let mut result = val / denom;
+
+    if val % denom != 0 {
+        result += 1;
+    }
+
+    Some(result)
+}
