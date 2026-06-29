@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 ethnum = "1.5.3"
-uint = {version = "0.10.0", default-features = false}
+ruint = {version = "1.17.2", default-features = false}
 
 [dev-dependencies]
 proptest = "1.11.0"

@@ -1,8 +1,8 @@
-use ethnum::U256;
+use ruint::aliases::U512;
 
 use crate::{
     error::MathError,
-    full_math::{U512, mul_div_floor, mul_div_floor_u512, mul_div_floor_u512_wide},
+    full_math::{mul_div_floor, mul_div_floor_u512_wide},
 };
 
 pub struct LiquidityMath;
@@ -196,11 +196,11 @@ impl LiquidityMath {
         // denominator - Q64.64
         // (A^64 / B^64) = A / B
         // so result is in Q0.0
-
-        Ok(numerator
+        let result = numerator
             .checked_div(U512::from(denominator))
-            .ok_or(MathError::ZeroDenominator)?
-            .as_u128())
+            .ok_or(MathError::ZeroDenominator)?;
+
+        Ok(u128::try_from(result).map_err(|_| MathError::Overflow)?)
     }
 
     /// Calculate how many token_1 user will get given liquidity, lower and upper bound

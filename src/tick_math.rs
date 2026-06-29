@@ -273,7 +273,7 @@ impl TickMath {
     /// T = log2(√P) * (2/log2(1.0001))
     /// # Arguments
     /// `sqrt_price_x64` - u128 (sqrt_price in Q64.64).
-    ///
+    //
     /// Throws if sqrt_price_x64 >= MIN_SQRT_PRICE_X64 or sqrt_price_x64 > MAX_SQRT_PRICE_X64
     pub fn sqrt_price_x64_to_tick(sqrt_price_x64: u128) -> Result<i32, MathError> {
         if sqrt_price_x64 <= MIN_SQRT_PRICE_X64 || sqrt_price_x64 > MAX_SQRT_PRICE_X64 {

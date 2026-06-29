@@ -1,18 +1,18 @@
-use ethnum::U256;
+use ruint::aliases::U512;
 
 use crate::{
     error::MathError,
+    full_math::mul_div_floor_u512_wide,
     tick_math::{MAX_SQRT_PRICE_X64, MIN_SQRT_PRICE_X64},
 };
 
 pub struct SqrtPriceMath;
 
 impl SqrtPriceMath {
-    /// Given current sqrt price, liquidity and amount_1 find next sqrt price
+    /// Given current sqrt price, liquidity and amount_1 find next sqrt price performs calculation
+    /// in U512 space to avoid overflow in worst case scenario
     /// # Formula
-    /// if sqrt price * liquidity do not overflow u256 then
     /// √P_new = (L * √P_current)/(L + (Δx * √P_current))
-    /// else √P_new = L/(L + (L / √P_current + Δx))
     ///
     /// # Arguments
     /// `sqrt_ratio_x64` - current sqrt price (Q64.64)
@@ -24,10 +24,6 @@ impl SqrtPriceMath {
     /// if liquidity == 0 or sqrt_ratio_x64 then it returns sqrt_ratio_x64
     ///
     /// # Return next_sqrt_price in Q64.64 format
-
-    // TODO: for some reason i am not fully stasified with this implementation
-    // either use u512 which will significantly reduces complexity
-    // or write helper functions to reduce the code complexity
     pub fn get_next_sqrt_price_from_amount0(
         sqrt_ratio_x64: u128,
         liquidity: u128,
@@ -42,114 +38,61 @@ impl SqrtPriceMath {
             return Err(MathError::SqrtPriceOutOfBounds);
         }
 
-        // Q64.64
-        let liquidity_x64 = U256::from(liquidity) << 64_u32;
-        // Q64.64
-        let sqrt_ratio_x64_256 = U256::from(sqrt_ratio_x64);
+        /*
+        * liquidity ∈ [1, 2^128 - 1]
+        * liquidity_x64 * 2^64
+        * = max(2^128 * 2^64)
+        * = max(2^192 - 1)
 
-        // Q64.64
-        let price =
-              // Q128.128
-              // liquidity ∈ [1, 2^128 - 1]
-              // liquidity_x64 * 2^64
-              // = max(2^128 * 2^64)
-              // = max(2^192 - 1)
-              //
-              // sqrt_ratio_x64_256 ∈ [2^32, 2^96]
-              // max = 2^192 * 2^96
-              // = max(2^288)
-              //
-              // the worse case requires 2^288 which can not fit in 2^55 the multiplication
-              // will overflow
-            if let Some(numerator) = liquidity_x64.checked_mul(sqrt_ratio_x64_256) {
-                // Q64.64
-                // amount_0 - Q0.0
-                // sqrt_ratio_x64 - Q64.64
-                // amount_0 * sqrt_ratio_x64 = 2^0 * 2^64 = 2^64 (Q64.64)
-                // Q64.64 / Q0.0 = 2^64/2^0 = 2^64/1 = 2^64 (Q64.64)
+        * sqrt_ratio_x64_256 ∈ [2^32, 2^96]
+        * max = 2^192 * 2^96
+        * = max(2^288)
 
-                // amount ∈ [1, 2^64 + 1]
-                // sqrt_ratio_x64 ∈ [2^32, 2^96]
-                // max = (2^64 + 1) * 2^96
-                // = 2^160 + 1
-                // max(2^160)
-                // and since 2^160 < 2^256 thus proving this will never overflow 2^256
-                let product = U256::from(amount) * sqrt_ratio_x64;
+        at worst case this will overflow multiplication so we have 2 options
+        either fallback to slow formula √P_new = L/(L + (L / √P_current + Δx)) (slow because division
+        is expesive on solana)
+        so we have 2 path fast path -> √P_new = (L * √P_current)/(L + (Δx * √P_current)) overflows -> slow path
 
-                // in both case denominator - Q64.64
-                let denominator = if amount_specified_is_input {
-                    liquidity_x64 + product
-                } else {
-                    // (L * sqrtP) / (L - (amount * sqrtP))
+        or we can go with U512 which makes code small and cleaner at cost of some performance
+        i choose to go with U512 option
+        */
 
-                    if liquidity_x64 < product {
-                        return Err(MathError::ZeroDenominator);
-                    }
+        let l_x64_512 = U512::from(liquidity) << 64;
+        let sqrt_p_512 = U512::from(sqrt_ratio_x64);
+        let amount_512 = U512::from(amount);
 
-                    // liquidity ∈ [1, 2^192]
-                    // product   ∈ [1, 2^160]
-                    //
-                    // 2^192 - 2^160
-                    // = max(2^192)
-                    //
-                    // this proving liquidity_x64 will not overflow or underflow because of this
-                    // subtraction
+        // Q64.64 * Q64.64 = Q128.128
+        let numerator = mul_div_floor_u512_wide(l_x64_512, sqrt_p_512, U512::from(1))?;
 
-                    liquidity_x64 - product
-                };
-                // Q128.128 / Q64.64 = Q64.64
-                // 2^128 / 2^64 = 2^64
-                let mut price = numerator
-                    .checked_div(denominator)
-                    .ok_or(MathError::ZeroDenominator)?;
+        // Q0.0 * Q64.64 = Q64.64
+        let product = amount_512 * sqrt_p_512;
 
-                // ROUND UP to protect the pool!
-                if numerator % denominator != U256::ZERO {
-                    price += 1;
-                }
-                price
-            } else {
-                // * If Δx * √P overflows, use formula `√P' = L / (L/√P + Δx)`
+        // Q64.64 +- Q64.64 = Q64.64
+        let denominator = if amount_specified_is_input {
+            l_x64_512 + product
+        } else {
+            if l_x64_512 <= product {
+                return Err(MathError::InsufficientLiquidity);
+            }
 
-                // liquidity_x64 - Q64.64
-                // sqrt_ratio_x64_256 - Q64.64
-                // amount - Q0.0
-                //
-                // Q64.64 / Q64.64 = Q0.0
-                // Q0.0 + Q0.0 = Q0.0
-                // Q0.0 - Q0.0 = Q0.0
-                let denominator = if amount_specified_is_input {
-                    liquidity_x64
-                    .checked_div(sqrt_ratio_x64_256)
-                    .ok_or(MathError::ZeroDenominator)?
-                    .checked_add(U256::from(amount))
-                    .ok_or(MathError::Overflow)?
-                } else {
-                    liquidity_x64
-                           .checked_div(sqrt_ratio_x64_256)
-                           .ok_or(MathError::ZeroDenominator)?
-                           .checked_sub(U256::from(amount))
-                           .ok_or(MathError::Overflow)?
-                };
+            l_x64_512 - product
+        };
 
-                // Q64.64 / Q0.0 = Q64.64
-                let mut price = liquidity_x64
-                    .checked_div(denominator)
-                    .ok_or(MathError::ZeroDenominator)?;
+        // Q128.128 / Q64.64 = Q64.64
+        let mut price = numerator
+            .checked_div(denominator)
+            .ok_or(MathError::ZeroDenominator)?;
 
-                // ROUND UP to protect the pool!
-                if liquidity_x64 % denominator != U256::ZERO {
-                    price += 1;
-                }
-                price
-            };
+        if numerator % denominator != U512::ZERO {
+            price += U512::from(1);
+        }
 
         if price > MAX_SQRT_PRICE_X64 || price < MIN_SQRT_PRICE_X64 {
             return Err(MathError::SqrtPriceOutOfBounds);
         }
 
         // Q64.64
-        Ok(price.as_u128())
+        Ok(u128::try_from(price).map_err(|_| MathError::Overflow)?)
     }
 
     /// Given current sqrt price, liquidity and amount_1 find next sqrt price
