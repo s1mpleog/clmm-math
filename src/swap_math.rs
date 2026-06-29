@@ -114,7 +114,6 @@ impl SwapMath {
                 )?;
 
                 result.amount_out = amount_out as u64;
-                // TODO: understand how this works
                 result.fee_amount = Self::calculate_fee_amount(result.amount_in, fee_rate)?;
             } else {
                 // amount_in is small does not reaches target

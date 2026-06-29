@@ -1,4 +1,5 @@
 #![no_std]
+pub mod bitmap;
 pub mod error;
 pub mod fixed_point_utils;
 pub mod full_math;

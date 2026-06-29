@@ -1,8 +1,7 @@
-use ruint::aliases::U512;
+use ruint::{Uint, aliases::U512};
 
 use crate::{
     error::MathError,
-    full_math::mul_div_floor_u512_wide,
     tick_math::{MAX_SQRT_PRICE_X64, MIN_SQRT_PRICE_X64},
 };
 
@@ -62,7 +61,7 @@ impl SqrtPriceMath {
         let amount_512 = U512::from(amount);
 
         // Q64.64 * Q64.64 = Q128.128
-        let numerator = mul_div_floor_u512_wide(l_x64_512, sqrt_p_512, U512::from(1))?;
+        let numerator: Uint<512, 8> = l_x64_512 * sqrt_p_512;
 
         // Q0.0 * Q64.64 = Q64.64
         let product = amount_512 * sqrt_p_512;

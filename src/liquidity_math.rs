@@ -14,6 +14,22 @@ pub struct TokenAmounts {
 }
 
 impl LiquidityMath {
+    pub fn add_delta(liquidity: u128, delta: i128) -> Result<u128, MathError> {
+        if delta == 0 {
+            return Ok(liquidity);
+        }
+
+        if delta > 0 {
+            liquidity
+                .checked_add(delta as u128)
+                .ok_or(MathError::Overflow)
+        } else {
+            liquidity
+                .checked_add(delta.unsigned_abs())
+                .ok_or(MathError::Underflow)
+        }
+    }
+
     /// Given tick_lower, tick_upper and amount 0 calculate liquidity L
     /// # Formula
     /// L = x * √(P_upper * √P_lower) / √(P_upper - √P_lower)
@@ -122,7 +138,6 @@ impl LiquidityMath {
 
         if sqrt_ratio_x64 <= sqrt_ratio_a_x64 {
             // only token 0 is active
-            // Pc <= Pa
             Self::get_liquidity_from_amount_0(sqrt_ratio_a_x64, sqrt_ratio_b_x64, amount_0)
         } else if sqrt_ratio_x64 < sqrt_ratio_b_x64 {
             // now at this stage we know first branch is false so Pc > Pa
@@ -134,7 +149,6 @@ impl LiquidityMath {
                 Self::get_liquidity_from_amount_1(sqrt_ratio_a_x64, sqrt_ratio_x64, amount_1)?,
             ))
         } else {
-            // Pc > Pa and Pc > Pb
             // so only token 1 is active
             Self::get_liquidity_from_amount_1(sqrt_ratio_a_x64, sqrt_ratio_b_x64, amount_1)
         }
