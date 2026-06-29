@@ -2,6 +2,13 @@ use ethnum::U256;
 
 use crate::error::MathError;
 
+use uint::construct_uint;
+
+construct_uint!(
+    // 64 * 8 = 512
+    pub struct U512(8);
+);
+
 /// Multiplies two u128 (Q64.64) numbers in U256 space to avoid overflow
 /// casts it back from Q128.128 to Q64.64 and returns as u128
 /// # Arguments
@@ -47,4 +54,43 @@ pub fn mul_div_ceil(a: u128, b: u128, denom: u128) -> Option<u128> {
     }
 
     Some(result)
+}
+
+/// Performs multiplication and division in U512 space
+/// only use if u256 really overflow
+///
+/// # Arguments
+/// `a` - u128
+/// `b` - u128
+/// `denom` - u128
+///
+/// Throws if `denom` == 0
+pub fn mul_div_floor_u512(a: u128, b: u128, denom: u128) -> Result<u128, MathError> {
+    if denom == 0 {
+        return Err(MathError::ZeroDenominator);
+    }
+
+    let result = U512::from(a) * U512::from(b) / U512::from(denom);
+
+    Ok(result.as_u128())
+}
+
+/// Performs multiplication and division in U512 space
+/// only use if u256 really overflow
+///
+/// # Arguments
+/// `a` - u512
+/// `b` - u512
+/// `denom` - u512
+///
+/// Throws if `denom` == 0
+///
+/// # Returns
+/// U512
+pub fn mul_div_floor_u512_wide(a: U512, b: U512, denom: U512) -> Result<U512, MathError> {
+    if denom.is_zero() {
+        return Err(MathError::ZeroDenominator);
+    }
+
+    Ok((a * b) / denom)
 }

@@ -1,7 +1,4 @@
-use crate::{
-    error::MathError, full_math::mul_div_floor, liquidity_math::LiquidityMath,
-    sqrt_price_math::SqrtPriceMath,
-};
+use crate::{error::MathError, liquidity_math::LiquidityMath, sqrt_price_math::SqrtPriceMath};
 
 pub struct SwapMath;
 
@@ -21,6 +18,7 @@ pub struct SwapStepResult {
 
 impl SwapMath {
     // TODO: i have to add is_input: bool
+
     pub fn compute_step(
         amount_remaining: u64,
         fee_rate: u32,
@@ -46,7 +44,12 @@ impl SwapMath {
             return Err(MathError::ZeroAmountSpecified);
         }
 
+        if fee_rate >= FEE_DENOMINATOR {
+            return Err(MathError::InvalidFeeRate);
+        }
+
         // amount_remaining - Q0.0
+        // fee_rate - Q0.0
         // liquidity - Q0.0
         // sqrt_price_current - Q64.64
         // sqrt_price_target - Q64.64
@@ -63,7 +66,15 @@ impl SwapMath {
 
         let mut result = SwapStepResult::default();
 
-        // TODO: understand how this works
+        // amount_remaining ∈ [1, 2^64]
+        // FEE_DENOMINATOR ∈ [2^20]
+        // fee_rate ∈ [0, 2^20] (because of invariant fee_rate < FEE_DENOMINATOR)
+        //
+        // FEE_DENOMINATOR - fee_rate = (2^20 - 2^20) = max 2^20 (temp)
+        // amount_remaining * temp = (2^64 * 2^20) = max 2^84 (temp_1)
+        // temp_1 / FEE_DENOMINATOR = (2^84 / 2^20) = max 2^64
+        // this proving even in worse case scenario it will never overflow u64
+        // so it's completely safe to cast to u64.
         let amount_remaining_less_fee = ((amount_remaining as u128
             * (FEE_DENOMINATOR as u128 - fee_rate as u128))
             / FEE_DENOMINATOR as u128) as u64;

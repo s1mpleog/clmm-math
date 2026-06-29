@@ -1,4 +1,9 @@
-use crate::{error::MathError, full_math::mul_div_floor};
+use ethnum::U256;
+
+use crate::{
+    error::MathError,
+    full_math::{U512, mul_div_floor, mul_div_floor_u512, mul_div_floor_u512_wide},
+};
 
 pub struct LiquidityMath;
 
@@ -166,12 +171,21 @@ impl LiquidityMath {
             .checked_sub(sqrt_ratio_a_x64)
             .ok_or(MathError::Overflow)?;
 
-        // scale it to Q64.64
-        let liquidity_x64 = liquidity << 64;
-
         // Q64.64 * Q64.64 = Q128.128
         // Q128.128 / Q64.64 = Q64.64
-        let numerator = mul_div_floor(liquidity_x64, delta, 1u128 << 64)?;
+        //
+        // liquidity ∈ [1, 2^192]
+        // delta ∈ [1, 2^92]
+        // max = 2^192 * 2^92 = 2^284 it overflow u256 also
+        // so we need to use U512 here
+
+        // Q64.64 * Q64.64 = Q128
+        // Q128.128 / Q64.64 = Q64.64
+        let numerator = mul_div_floor_u512_wide(
+            U512::from(liquidity) << 64,
+            U512::from(delta),
+            U512::from(1u128 << 64),
+        )?;
 
         // multiplying Q64.64 scales to Q128.128 because (2^64 * 2^64) = 2^128
         // we divide with Q64.64 to scale it back to Q64.64 because
@@ -182,9 +196,11 @@ impl LiquidityMath {
         // denominator - Q64.64
         // (A^64 / B^64) = A / B
         // so result is in Q0.0
+
         Ok(numerator
-            .checked_div(denominator)
-            .ok_or(MathError::ZeroDenominator)?)
+            .checked_div(U512::from(denominator))
+            .ok_or(MathError::ZeroDenominator)?
+            .as_u128())
     }
 
     /// Calculate how many token_1 user will get given liquidity, lower and upper bound
