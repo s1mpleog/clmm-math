@@ -322,7 +322,7 @@ impl TickMath {
          * where each bi is digit (either 0 or 1)
          *
          * how fractions are represented in binary
-         * the integer part is represented as bi * 2^3 + bi * 2^2 + bi * 2^1 + bi * 2^0
+         * the integer part is represented as bi * ... 2^3 + bi * 2^2 + bi * 2^1 + bi * 2^0
          * the fractional part is represented as bi * 2^-1 + bi * 2^-2 + bi * 2^-3 ....
          *
          * calculate m^2
