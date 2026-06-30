@@ -3,10 +3,10 @@ pub struct BitmapMath;
 impl BitmapMath {
     /*
      * consider this array
-     * [0, 0, 0, 0, 0, .............. 1, 0, 1] (64 bits)
-     * [1, 0, 1, 0, 0, .............. 0, 0, 1] (64 bits)
-     * [0, 0, 1, 0, 0, .............. 0, 1, 1] (64 bits)
-     * [0, 1, 0, 0, 1, .............. 0, 0, 1] (64 bits)
+     * [0, 0, 0, 0, 0, .............. 1, 0, 1] (63 bits)
+     * [1, 0, 1, 0, 0, .............. 0, 0, 1] (63 bits)
+     * [0, 0, 1, 0, 0, .............. 0, 1, 1] (63 bits)
+     * [0, 1, 0, 0, 1, .............. 0, 0, 1] (63 bits)
 
      each row is 64 bits long (call this word)
      each bit in row have a state (call this bit)
@@ -23,7 +23,7 @@ impl BitmapMath {
 
     fundamental operatation:
     word_index = compressed_tick >> 6 (compressed_tick / 64)
-    bit_index = compress_tick % 64
+    bit_index = compress_tick & 63
 
     example:
     consider compressed_tick = 20
@@ -38,7 +38,7 @@ impl BitmapMath {
     now we have to find next tick look at the bit we know next init tick is at bit let's say bit 24
     but we can't just jump to bit 24
 
-    so here is idea we have  `trailing_zeros()` it return the count of zero from left side
+    so here is idea we have  `trailing_zeros()` it return the count of zero from right side (LSB)
     ex: [00101000] counting from right (LSB) we have `3` zeros before 1 so `trailing_zeros()` will return 3
 
     so what if we take advantage of this if we mask our current tick and lower bits then the `trailing_zeros()`
@@ -120,7 +120,6 @@ impl BitmapMath {
       = (8 - 1) - 4
       = 3 (our next lower initialized tick)
 
-
       summary
       masked the current tick bit and its upper bits
       calling leading_zeros() on masked row
@@ -153,7 +152,7 @@ impl BitmapMath {
                 return Some(compressed * tick_spacing);
             } else {
                 word_idx += 1;
-                // search the word from start
+                // search the next word from start
                 mask = u64::MAX;
             }
         }
@@ -185,9 +184,8 @@ impl BitmapMath {
                 let compressed = (word_idx * 64) + prev_bit as i32;
                 return Some(compressed * tick_spacing);
             } else {
-                // search the previous word
                 word_idx -= 1;
-                // search the word from start
+                // search the next word from start
                 mask = u64::MAX;
             }
         }
