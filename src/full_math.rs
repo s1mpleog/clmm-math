@@ -12,7 +12,7 @@ use ruint::aliases::U512;
 #[inline(always)]
 pub fn mul_shift_64(a: u128, b: u128) -> u128 {
     let result = U256::from(a) * U256::from(b);
-    // cast it back to Q64.64 from Q128.128
+    // cast it back to Q64.64 from  Q128.128
     (result >> 64u32).as_u128()
 }
 
